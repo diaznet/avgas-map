@@ -210,3 +210,23 @@ def test_cli_reparse_only_requires_workspace_and_rejects_dry_run():
         run_pipeline.main(["--reparse-only"])  # no --workspace
     with pytest.raises(SystemExit):
         run_pipeline.main(["--reparse-only", "--workspace", ".", "--dry-run"])
+
+
+def test_cli_writes_status_to_github_output(tmp_path, monkeypatch):
+    # The CI workflow gates the Pages deploy on this status, so it must be
+    # written to $GITHUB_OUTPUT. A non-published outcome must report as such.
+    import run_pipeline
+    from avgasmap import pipeline as pipeline_mod
+    from avgasmap.pipeline import RunOutcome
+
+    out_file = tmp_path / "gh_output"
+    out_file.write_text("", encoding="utf-8")
+    monkeypatch.setenv("GITHUB_OUTPUT", str(out_file))
+    # run_pipeline.main does `from avgasmap.pipeline import run`, so patch it there.
+    monkeypatch.setattr(pipeline_mod, "run",
+                        lambda cfg: RunOutcome(status="skipped", cycle=None,
+                                               detail="not an AIRAC date"))
+
+    rc = run_pipeline.main(["--dry-run"])
+    assert rc == 0  # skipped is not a failure
+    assert "status=skipped" in out_file.read_text(encoding="utf-8")

@@ -73,6 +73,7 @@ jobs:
         run: pip install -r pipeline/requirements.txt
 
       - name: Run pipeline (fetch, parse, join, guard, publish Release)
+        id: run
         env:
           AUTOROUTER_USER: ${{ secrets.AUTOROUTER_USER }}
           AUTOROUTER_PASS: ${{ secrets.AUTOROUTER_PASS }}
@@ -93,14 +94,20 @@ jobs:
           path: pipeline/**/report.md
           if-no-files-found: ignore
 
+      # Deploy Pages ONLY when a cycle was actually published. A skipped
+      # (non-AIRAC) or guard-failed run leaves the last good site + manifest
+      # live rather than deploying an empty manifest over it (R7.5/R8.4).
       - name: Configure Pages
+        if: steps.run.outputs.status == 'published'
         uses: actions/configure-pages@v5
 
       - name: Upload site artifact
+        if: steps.run.outputs.status == 'published'
         uses: actions/upload-pages-artifact@v3
         with:
           path: web
 
       - name: Deploy to GitHub Pages
         id: deploy
+        if: steps.run.outputs.status == 'published'
         uses: actions/deploy-pages@v4

@@ -99,6 +99,25 @@ def test_publish_replaces_same_cycle_asset():
     assert json.loads(gh._assets["airac-2609"].decode())["type"] == "FeatureCollection"
 
 
+class LaggyGitHub(MockGitHub):
+    """Simulates GitHub read-after-write lag: list_releases() returns the
+    just-uploaded release WITHOUT its asset url yet (empty), while the upsert
+    itself returns the real url. Reproduces the empty-manifest bug."""
+
+    def list_releases(self) -> list[Release]:
+        # Every release comes back asset-less (as if the asset isn't visible yet).
+        return [Release(tag=tag, asset_url="") for tag in self._assets]
+
+
+def test_publish_survives_read_after_write_lag():
+    # The just-published cycle must appear in the manifest even when a
+    # freshly-listed release still shows no asset (GitHub consistency lag).
+    gh = LaggyGitHub()
+    res = publish_cycle("2608", valid_dataset(), gh)
+    assert res.manifest["latest"] == "2608"
+    assert [c["cycle"] for c in res.manifest["cycles"]] == ["2608"]
+
+
 def test_publish_failure_propagates_and_leaves_prior_state():
     gh = MockGitHub(existing={"airac-2605": b"good"}, fail_upload=True)
     with pytest.raises(RuntimeError):

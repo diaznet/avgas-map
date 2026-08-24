@@ -439,6 +439,8 @@ The whole pipeline and front-end run locally end-to-end with no publishing:
 | Parser output non-conforming | reject that provider, exclude from build | R5.4 |
 | Dataset below floor / big relative drop | abort publish, keep last good, exit non-zero | R7.4/R7.5 |
 | Publish / deploy step fails | last deployed site + last Release remain live | R7.5, R8.4 |
+| Run does not publish (skipped on a non-AIRAC date, or guard-failed) | the Pages deploy is gated on the run's `status=published`, so a non-publishing run leaves the last good site + manifest live rather than deploying `web/` with a stale/empty manifest over it | R7.5, R8.4 |
+| GitHub read-after-write lag: `list_releases()` right after an upload omits the just-uploaded asset | merge the just-published release (from the upsert's own return value) into the manifest, so the current cycle is never dropped | R7.3 |
 | WebDAV / OpenAIP transient error | bounded retry + backoff; if still failing, treat as run failure | R7.7 |
 | Front-end dataset load fails | show error message, not a blank map | R1.5 |
 | Freshness metadata incomplete | show nothing rather than partial | R9.1 |

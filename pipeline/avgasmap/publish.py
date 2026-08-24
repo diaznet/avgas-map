@@ -171,9 +171,15 @@ def publish_cycle(
     """
     tag = tag_for_cycle(cycle_id)
     data = json.dumps(dataset, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-    gh.upsert_release_asset(tag, ASSET_NAME, data)
+    published = gh.upsert_release_asset(tag, ASSET_NAME, data)
 
-    # Rebuild the manifest from the (now-updated) set of releases.
-    releases = gh.list_releases()
+    # Rebuild the manifest from the full set of releases. Merge in the release we
+    # just published from the upsert's own return value: a `list_releases()`
+    # immediately after an upload can lag (GitHub read-after-write consistency),
+    # sometimes returning the release with an empty asset list — which would drop
+    # the just-published cycle and yield an empty manifest. Trust our own upload.
+    releases = list(gh.list_releases())
+    if published.asset_url:
+        releases = [r for r in releases if r.tag != published.tag] + [published]
     manifest = build_manifest(releases)
     return PublishResult(published_tag=tag, manifest=manifest)

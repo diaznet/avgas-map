@@ -1,10 +1,30 @@
 # AVGAS-Map
 
+<p align="center">
+  <a href="https://github.com/diaznet/avgas-map/actions/workflows/pipeline.yml"><img alt="Pipeline" src="https://github.com/diaznet/avgas-map/actions/workflows/pipeline.yml/badge.svg" /></a>
+  <img alt="Coverage" src="https://img.shields.io/badge/coverage-France%20(LF)-blue" />
+  <img alt="Data source" src="https://img.shields.io/badge/data-SIA%20eAIP%20%2B%20OpenAIP-blue" />
+  <img alt="Hosting" src="https://img.shields.io/badge/hosting-GitHub%20Pages-brightgreen" />
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green" /></a>
+</p>
+
 A free, statically-hosted map of aerodromes offering **AVGAS**, for pilots
 planning fuel stops. Scope is the EASA area, using aerodrome charts available
 through the autorouter WebDAV. France is the first country implemented.
 
-**Live map:** _(link once GitHub Pages is enabled)_
+<h3 align="center">
+  🗺️ <a href="https://diaznet.github.io/avgas-map/">View the live map →</a>
+</h3>
+
+<p align="center">
+  <img src="docs/img/gen.png" alt="AVGAS-Map — map overview" width="800" />
+</p>
+
+<p align="center"><em>Click any aerodrome to see its fuel details:</em></p>
+
+<p align="center">
+  <img src="docs/img/details.png" alt="AVGAS-Map — aerodrome fuel details" width="360" />
+</p>
 
 > ⚠️ **Not an official source.** This map must **not** be used as the sole
 > reference for flight planning. Always consult the official AIP and current
@@ -103,3 +123,13 @@ The workflow runs without maintenance once these are set on the GitHub repo:
 
 Then the pipeline self-triggers on AIRAC dates, or run it manually via the
 Actions tab ("Run workflow"), optionally forcing a cycle.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+Bundled/consumed third-party components keep their own terms: the map uses
+[Leaflet](https://leafletjs.com/) (BSD-2-Clause, vendored under `web/vendor/`),
+aerodrome coordinates from [OpenAIP](https://www.openaip.net/) (attribution
+required), base map tiles © [OpenStreetMap](https://www.openstreetmap.org/copyright)
+contributors, and fuel data derived from the French SIA eAIP.

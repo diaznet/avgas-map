@@ -13,6 +13,7 @@ installed and a .env exists). No OS-specific credential store is used.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -150,6 +151,18 @@ def main(argv: list[str] | None = None) -> int:
     if outcome.status == "local" and outcome.manifest:
         print("Local manifest written to web/data/index.json. "
               "Serve web/ (e.g. `python -m http.server` from web/) to preview.")
+
+    # Expose the outcome to the CI workflow so it deploys Pages ONLY when a cycle
+    # was actually published — a skipped (non-AIRAC) or guard-failed run must not
+    # deploy an empty manifest over the last good site (R7.5/R8.4).
+    gh_out = os.environ.get("GITHUB_OUTPUT")
+    if gh_out:
+        try:
+            with open(gh_out, "a", encoding="utf-8") as fh:
+                fh.write(f"status={outcome.status}\n")
+        except OSError:
+            pass
+
     # A failed guard is a non-zero exit (CI aborts, prior site stays live).
     return 1 if outcome.status == "failed" else 0
 
