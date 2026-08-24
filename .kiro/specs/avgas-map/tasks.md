@@ -402,3 +402,21 @@ The contract is the normalized dataset: build it and its validation first
   - Downstream workflow ⇒ inherently non-blocking: cannot affect the publish run,
     dataset, or guard (ADR-0003).
   - _Requirements: 4.10_
+
+- [ ] 30. Serve datasets same-origin (fix Release-asset CORS)
+  - Root cause: browser fetch of a GitHub Release asset URL from the Pages origin
+    is CORS-blocked (302 to a storage host with no ACAO header). The published
+    manifest's absolute Release URLs are unfetchable in-browser.
+  - `publish.py`: add a way to fetch a Release asset's BYTES server-side
+    (`download_asset(tag)` on the GitHub client). `publish_cycle` returns the
+    published dataset bytes too.
+  - `pipeline.py` publish path: write the current cycle's dataset to
+    `web/data/dataset-<cycle>.geojson`; download every OTHER retained cycle's
+    asset into `web/data/`; build the manifest with RELATIVE urls
+    (`data/dataset-<cycle>.geojson`) and write it to `web/data/index.json` (and
+    keep `web/index.json` as the published fallback, also relative).
+  - `build_manifest`: emit relative `data/dataset-<cycle>.geojson` urls.
+  - Front-end already resolves relative same-origin urls (no change needed).
+  - Tests: manifest urls are relative; publish path writes all retained datasets
+    into web/data/; mock client download_asset.
+  - _Requirements: 8.2_

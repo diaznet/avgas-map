@@ -12,8 +12,11 @@
 (function () {
   "use strict";
 
-  // Published manifest location (relative to the deployed site). For v1 the
-  // pipeline ships index.json alongside the site; the local path is tried first.
+  // Manifest location: both local preview and production ship it at
+  // data/index.json (alongside the cycle datasets), so cycle URLs are relative
+  // to data/ and always same-origin. Root index.json is kept as a legacy
+  // fallback. Datasets are never fetched cross-origin (Release URLs are not
+  // CORS-fetchable from the Pages origin).
   var LOCAL_MANIFEST = "data/index.json";
   var PUBLISHED_MANIFEST = "index.json";
 
@@ -65,10 +68,11 @@
     });
   }
 
-  // Resolve the manifest: local first, then published. Remember WHICH manifest
-  // URL we loaded so cycle URLs (which may be relative, e.g. the local
-  // "dataset-2608.geojson") resolve against the manifest's own location rather
-  // than the page. Absolute cycle URLs (published Release assets) are unaffected.
+  // Resolve the manifest. Both local preview and production ship it at
+  // data/index.json (with the cycle datasets), so its relative cycle URLs
+  // resolve to same-origin files under data/. A legacy root index.json is tried
+  // only as a fallback. `base` is remembered so cycle URLs resolve against the
+  // manifest's own location.
   function resolveManifest() {
     return fetchJson(LOCAL_MANIFEST)
       .then(function (m) { return { manifest: m, base: LOCAL_MANIFEST }; })

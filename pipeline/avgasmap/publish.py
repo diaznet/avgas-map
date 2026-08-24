@@ -27,6 +27,11 @@ def tag_for_cycle(cycle_id: str) -> str:
     return f"airac-{cycle_id}"
 
 
+def dataset_filename(cycle_id: str) -> str:
+    """Relative, same-origin manifest URL for a cycle's dataset (under web/data/)."""
+    return f"dataset-{cycle_id}.geojson"
+
+
 def cycle_from_tag(tag: str) -> str | None:
     if tag.startswith("airac-"):
         rest = tag[len("airac-"):]
@@ -46,6 +51,9 @@ class GitHubReleases(Protocol):
 
     def list_releases(self) -> list[Release]: ...
     def upsert_release_asset(self, tag: str, asset_name: str, data: bytes) -> Release: ...
+    def download_asset(self, tag: str) -> bytes | None:
+        """Return the `dataset.geojson` bytes for `tag`, or None if absent."""
+        ...
 
 
 class RestGitHubReleases:
@@ -123,6 +131,32 @@ class RestGitHubReleases:
         up.raise_for_status()
         return Release(tag=tag, asset_url=up.json().get("browser_download_url", ""))
 
+    def download_asset(self, tag: str) -> bytes | None:
+        """Download the dataset.geojson bytes for a tag, server-side (no CORS).
+
+        Uses the GitHub API asset endpoint with Accept: octet-stream, which
+        redirects to storage; `requests` follows it. Returns None if the release
+        or asset is missing.
+        """
+        import requests
+
+        repo_url = f"{self._api}/repos/{self._repo}"
+        r = requests.get(f"{repo_url}/releases/tags/{tag}", headers=self._headers(), timeout=60)
+        if r.status_code == 404:
+            return None
+        r.raise_for_status()
+        for asset in r.json().get("assets", []):
+            if asset.get("name") == ASSET_NAME:
+                dl_headers = dict(self._headers())
+                dl_headers["Accept"] = "application/octet-stream"
+                a = requests.get(
+                    f"{repo_url}/releases/assets/{asset['id']}",
+                    headers=dl_headers, timeout=120, allow_redirects=True,
+                )
+                a.raise_for_status()
+                return a.content
+        return None
+
 
 def build_manifest(releases: list[Release]) -> dict:
     """Build index.json from all AIRAC releases (with an asset).
@@ -143,7 +177,9 @@ def build_manifest(releases: list[Release]) -> dict:
                 "cycle": cid,
                 "effective_date": airac.effective_date(cid).isoformat(),
                 "schema_version": schema.SCHEMA_VERSION,
-                "url": rel.asset_url,
+                # Relative, same-origin path to the dataset materialized into the
+                # site at deploy (Release URLs are not CORS-fetchable in-browser).
+                "url": dataset_filename(cid),
             }
         )
     # Sort newest effective date first.
@@ -156,6 +192,8 @@ def build_manifest(releases: list[Release]) -> dict:
 class PublishResult:
     published_tag: str
     manifest: dict
+    dataset_bytes: bytes           # the just-published dataset (avoid re-download)
+    retained_tags: list[str]       # all airac tags in the manifest (for materializing)
 
 
 def publish_cycle(
@@ -165,9 +203,11 @@ def publish_cycle(
 ) -> PublishResult:
     """Publish `dataset` as the asset for `cycle_id`, then regenerate the manifest.
 
-    Returns the published tag and the fresh manifest (to ship with the site).
-    Any exception from `gh` propagates so the caller aborts without touching the
-    prior published state (R7.5).
+    Returns the published tag, the fresh manifest (relative same-origin URLs), the
+    published dataset bytes (so the caller writes the site copy without a
+    re-download), and the retained cycle tags (so the caller can materialize all
+    cycles into the site). Any exception from `gh` propagates so the caller aborts
+    without touching the prior published state (R7.5).
     """
     tag = tag_for_cycle(cycle_id)
     data = json.dumps(dataset, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
@@ -182,4 +222,7 @@ def publish_cycle(
     if published.asset_url:
         releases = [r for r in releases if r.tag != published.tag] + [published]
     manifest = build_manifest(releases)
-    return PublishResult(published_tag=tag, manifest=manifest)
+    retained = [tag_for_cycle(c["cycle"]) for c in manifest["cycles"]]
+    return PublishResult(
+        published_tag=tag, manifest=manifest, dataset_bytes=data, retained_tags=retained
+    )

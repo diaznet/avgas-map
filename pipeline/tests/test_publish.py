@@ -40,6 +40,9 @@ class MockGitHub:
         self.uploads.append(tag)
         return Release(tag=tag, asset_url=f"https://dl/{tag}/{asset_name}")
 
+    def download_asset(self, tag: str) -> bytes | None:
+        return self._assets.get(tag)
+
 
 def test_tag_roundtrip():
     assert tag_for_cycle("2609") == "airac-2609"
@@ -76,6 +79,16 @@ def test_build_manifest_ignores_non_airac_or_assetless():
 
 def test_build_manifest_empty():
     assert build_manifest([]) == {"latest": None, "cycles": []}
+
+
+def test_manifest_urls_are_relative_same_origin():
+    # Browsers can't fetch Release asset URLs cross-origin; the manifest must use
+    # relative, same-origin paths (resolved against web/data/index.json).
+    releases = [Release("airac-2608", "https://github.com/x/releases/download/airac-2608/dataset.geojson")]
+    manifest = build_manifest(releases)
+    url = manifest["cycles"][0]["url"]
+    assert url == "dataset-2608.geojson"
+    assert "://" not in url  # not absolute
 
 
 def test_publish_uploads_asset_and_returns_manifest():

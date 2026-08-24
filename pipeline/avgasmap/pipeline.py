@@ -325,9 +325,12 @@ def run(cfg: RunConfig, *, today: date | None = None,
         gh = _build_github_client()
     log.info("Publishing Release %s ...", publish.tag_for_cycle(cycle))
     result = publish.publish_cycle(cycle, dataset, gh)
-    # Ship the manifest with the site: write web/index.json so the deploy step
-    # picks it up. Cycle datasets live in Releases (their URLs are in here).
-    _write_site_manifest(cfg, result.manifest)
+    # Materialize datasets INTO the site so the browser loads them same-origin:
+    # GitHub Release asset URLs 302-redirect to a storage host with no CORS
+    # header, so a browser fetch from the Pages origin is blocked. We write the
+    # current cycle's bytes and download every other retained cycle's asset
+    # (server-side, no CORS) into web/data/, then ship the manifest there too.
+    _materialize_site_data(cfg, cycle, result, gh)
     log.info("Published %s; manifest lists %d cycle(s), latest=%s",
              result.published_tag, len(result.manifest.get("cycles", [])),
              result.manifest.get("latest"))
@@ -376,12 +379,38 @@ def _write_local(cfg: RunConfig, dataset: dict, cycle: str) -> dict:
     return manifest
 
 
-def _write_site_manifest(cfg: RunConfig, manifest: dict) -> None:
-    """Write the published manifest to web/index.json for the Pages deploy."""
-    web_dir = os.path.dirname(cfg.web_data_dir) if cfg.web_data_dir else os.path.join(_repo_root(), "web")
-    os.makedirs(web_dir, exist_ok=True)
-    with open(os.path.join(web_dir, "index.json"), "w", encoding="utf-8") as fh:
-        json.dump(manifest, fh, ensure_ascii=False, indent=2)
+def _materialize_site_data(cfg: RunConfig, cycle: str, result, gh) -> None:
+    """Populate web/data/ with the manifest + EVERY retained cycle's dataset.
+
+    The browser fetches datasets same-origin from web/data/ (Release asset URLs
+    are not CORS-fetchable). The current cycle's bytes come from the publish
+    result; all other retained cycles are downloaded from their Releases
+    server-side (no CORS). Writes web/data/index.json (the manifest the
+    front-end loads first).
+    """
+    web_data = cfg.web_data_dir or os.path.join(_repo_root(), "web", "data")
+    os.makedirs(web_data, exist_ok=True)
+
+    def _write_dataset(cid: str, data: bytes) -> None:
+        with open(os.path.join(web_data, publish.dataset_filename(cid)), "wb") as fh:
+            fh.write(data)
+
+    # Current cycle: bytes we just published (no re-download).
+    _write_dataset(cycle, result.dataset_bytes)
+
+    # Every OTHER retained cycle: download its asset server-side.
+    for tag in result.retained_tags:
+        cid = publish.cycle_from_tag(tag)
+        if not cid or cid == cycle:
+            continue
+        data = gh.download_asset(tag)
+        if data:
+            _write_dataset(cid, data)
+        else:
+            log.warning("Could not download dataset for cycle %s; site will 404 it", cid)
+
+    with open(os.path.join(web_data, "index.json"), "w", encoding="utf-8") as fh:
+        json.dump(result.manifest, fh, ensure_ascii=False, indent=2)
 
 
 def _build_github_client() -> publish.GitHubReleases:

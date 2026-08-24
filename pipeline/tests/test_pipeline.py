@@ -78,8 +78,11 @@ def test_publish_path_with_mock_github(tmp_path, monkeypatch):
                         lambda code, ws, keep_intermediates=False, reparse_only=False: (recs, [], []))
     monkeypatch.setattr(pipeline, "_fetch_index_live", lambda code: idx)
 
-    gh = MockGitHub()
-    cfg = RunConfig(cycle="2609", countries=["lf"], workspace=str(tmp_path), floor=1)
+    # A prior published cycle exists too, so we exercise materializing history.
+    gh = MockGitHub(existing={"airac-2605": b'{"type":"FeatureCollection","features":[]}'})
+    web_data = tmp_path / "web" / "data"
+    cfg = RunConfig(cycle="2609", countries=["lf"], workspace=str(tmp_path),
+                    web_data_dir=str(web_data), floor=1)
     out = run(cfg, gh=gh)
 
     assert out.status == "published"
@@ -89,6 +92,15 @@ def test_publish_path_with_mock_github(tmp_path, monkeypatch):
     # The published asset is a schema-valid dataset.
     published = json.loads(gh._assets["airac-2609"].decode())
     schema.validate_dataset(published)
+
+    # Datasets are materialized into web/data/ for same-origin serving, for the
+    # current cycle AND every retained prior cycle (downloaded server-side).
+    assert (web_data / "dataset-2609.geojson").is_file()
+    assert (web_data / "dataset-2605.geojson").is_file()
+    # The site manifest lives in web/data/ with RELATIVE urls.
+    site_manifest = json.loads((web_data / "index.json").read_text(encoding="utf-8"))
+    for c in site_manifest["cycles"]:
+        assert "://" not in c["url"] and c["url"] == f"dataset-{c['cycle']}.geojson"
 
 
 def test_guard_failure_does_not_publish(tmp_path, monkeypatch):

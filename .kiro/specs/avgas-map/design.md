@@ -34,9 +34,9 @@ attribution) is preserved.
 | Parser boundary | Parser receives a local PDF path, returns ICAO-keyed fuel records |
 | Dataset shape | One combined GeoJSON per cycle, AVGAS-only features |
 | Coordinates | OpenAIP per-country airport export (public S3, configurable endpoint), joined by ICAO |
-| Repo commits | None from CI; datasets → Release assets, site → Pages artifact |
-| History | One GitHub Release per AIRAC cycle, tag `airac-<YYNN>`; retain all |
-| Cycle discovery | `index.json` manifest shipped with the site; marks `latest` |
+| Repo commits | None from CI; datasets archived → Release assets; site + all retained datasets → Pages artifact |
+| History | One GitHub Release per AIRAC cycle, tag `airac-<YYNN>`; retain all. At deploy, every retained cycle's dataset is materialized into the site (`web/data/`) so the browser loads them same-origin (Release URLs are not CORS-fetchable) |
+| Cycle discovery | `index.json` manifest shipped with the site; relative same-origin cycle URLs; marks `latest` |
 | Trigger | Daily cron gated on a committed AIRAC calendar + `workflow_dispatch` |
 | Never-worse guard | Absolute floor AND relative-drop check before publishing |
 | Report | CI job summary + uploaded artifact; not committed |
@@ -345,13 +345,28 @@ Plain HTML/JS, no build. Load order:
    per feature.
 
 **Data-source resolution (production vs. local).** The front-end first tries to
-load a local manifest at `data/index.json` (relative to the site). If present,
-it uses it and its cycle URLs (which point at local dataset files) — this is the
-local-preview path. If absent, it falls back to the published manifest shipped
-with the deployed site, whose cycle URLs are GitHub Release asset URLs. This lets
-the exact same `web/` run locally against locally-generated data or in production
-against Releases, with no code branch beyond the initial try/fallback. `web/data/`
-is gitignored; production never contains it.
+load a local manifest at `data/index.json` (relative to the site); if absent it
+falls back to the published manifest at `index.json`. In **both** cases the
+manifest's cycle URLs are **relative, same-origin** paths (e.g.
+`data/dataset-<cycle>.geojson`), resolved against the manifest's own location, so
+the dataset is always fetched from the site's own origin. Production cannot use
+the GitHub Release download URLs directly: they 302-redirect to a storage host
+that returns no `Access-Control-Allow-Origin`, so a browser `fetch()` from the
+Pages origin is CORS-blocked. Instead, at deploy the pipeline materializes every
+retained cycle's dataset into `web/data/` (see "Materializing datasets" below),
+and the manifest points at those. The same `web/` runs locally against
+locally-generated data or in production against the deployed copies, with no code
+branch beyond the initial try/fallback. `web/data/` is gitignored (never
+committed); it is populated at deploy time and shipped in the Pages artifact.
+
+**Materializing datasets for the site (publish path).** After publishing the
+current cycle to its Release (the archive/source of truth), the pipeline writes
+the current dataset to `web/data/dataset-<cycle>.geojson` and **downloads every
+other retained cycle's asset** from its Release into `web/data/` — server-side,
+via the authenticated GitHub API, where CORS does not apply. The Pages deploy
+then ships `web/` including all cycle datasets, so the manifest's relative URLs
+resolve same-origin for the latest and all historical cycles. This keeps Releases
+as the durable per-cycle archive while making the browser-facing data same-origin.
 
 UI chrome:
 - **Top bar**: AIRAC cycle dropdown | grade filter (checkboxes 100LL / UL91 /
