@@ -1,0 +1,145 @@
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #1b1f24;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0.9rem;
+  background: #0f2b46;
+  color: #fff;
+  flex-wrap: wrap;
+}
+
+#topbar .brand {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-size: 1.05rem;
+}
+
+#topbar .controls {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.filter-group label {
+  margin-right: 0.4rem;
+  white-space: nowrap;
+}
+
+#cycle-select, #search {
+  font: inherit;
+  padding: 0.25rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+}
+
+#search { min-width: 12rem; }
+
+#map {
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+.status {
+  position: absolute;
+  top: 4.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: #fff3cd;
+  border: 1px solid #e0c86b;
+  color: #665300;
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  max-width: 90%;
+}
+
+.status.error {
+  background: #f8d7da;
+  border-color: #e2949c;
+  color: #6b1720;
+}
+
+#footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  align-items: center;
+  padding: 0.4rem 0.9rem;
+  background: #f1f5f9;
+  border-top: 1px solid #d8dee6;
+  font-size: 0.78rem;
+  color: #40474f;
+}
+
+#footer .disclaimer { font-weight: 600; color: #8a1c26; }
+#footer .freshness { font-weight: 600; }
+#footer a { color: #0f2b46; }
+
+/* Popup content */
+.avgas-popup h3 { margin: 0 0 0.2rem; font-size: 1rem; }
+.avgas-popup .icao { color: #556; font-weight: 600; }
+.avgas-popup .grades { margin: 0.3rem 0; }
+.avgas-popup .badge {
+  display: inline-block;
+  border-radius: 4px;
+  padding: 0.05rem 0.4rem;
+  margin-right: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+}
+/* International fuel-colour convention: AVGAS = red, Jet = black. */
+.avgas-popup .badge.avgas { background: #c62828; }
+.avgas-popup .badge.jet-badge { background: #111; }
+.avgas-popup .jet { color: #222; font-size: 0.82rem; margin: 0.2rem 0; }
+.avgas-popup .provider { font-size: 0.82rem; margin: 0.2rem 0; }
+.avgas-popup .contact { font-size: 0.8rem; margin: 0.1rem 0; }
+.avgas-popup .contact a { color: #0f2b46; }
+.avgas-popup .fren-toggle { margin-left: 0.4rem; }
+.avgas-popup .fren-btn {
+  border: 1px solid #b6c2cf;
+  background: #fff;
+  color: #334;
+  font-size: 0.68rem;
+  padding: 0 0.3rem;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.avgas-popup .fren-btn.active { background: #0f2b46; color: #fff; border-color: #0f2b46; }
+.avgas-popup .flags { margin: 0.3rem 0; }
+.avgas-popup .flag {
+  display: inline-block;
+  background: #e2e8f0;
+  border-radius: 3px;
+  padding: 0.02rem 0.35rem;
+  margin: 0.1rem 0.2rem 0.1rem 0;
+  font-size: 0.72rem;
+}
+.avgas-popup .amdt { color: #667; font-size: 0.75rem; }
+.avgas-popup details { margin-top: 0.3rem; }
+.avgas-popup details summary { cursor: pointer; font-size: 0.8rem; color: #0f2b46; }
+.avgas-popup .raw { white-space: pre-wrap; font-size: 0.75rem; color: #333; margin-top: 0.25rem; }

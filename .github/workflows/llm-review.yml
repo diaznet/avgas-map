@@ -1,0 +1,103 @@
+name: AVGAS-Map LLM extraction-QA
+
+# Advisory-only quality-assurance pass (ADR-0003). Runs a local Ollama model
+# over the parsed fuel records and uploads suggestions.json as an artifact.
+# It NEVER publishes a Release, deploys Pages, or commits anything — it exists
+# purely to surface likely extraction gaps for a human to turn into parser rules.
+#
+# Runs automatically AFTER a successful publish run (so each published cycle is
+# QA'd) and on demand. Being a downstream workflow, it cannot affect the publish
+# run, the published dataset, or the never-worse guard.
+
+on:
+  workflow_run:
+    workflows: ["AVGAS-Map pipeline"]   # must match pipeline.yml's `name:`
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      cycle:
+        description: "AIRAC cycle id (YYNN) to review (optional; defaults to the in-force cycle)"
+        required: false
+        type: string
+      model:
+        description: "Ollama model (default qwen3:8b — best FP/recall per benchmark; slow on the CPU runner but this job is non-blocking)"
+        required: false
+        type: string
+        default: "qwen3:8b"
+
+permissions:
+  contents: read                    # read-only: this job never writes the repo
+
+concurrency:
+  group: avgas-map-llm-review
+  cancel-in-progress: true
+
+jobs:
+  llm-review:
+    # On the workflow_run trigger, only proceed if the publish run SUCCEEDED
+    # (so we QA cycles that actually published). Manual dispatch always runs.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pipeline dependencies
+        run: pip install -r pipeline/requirements.txt
+
+      - name: Resolve cycle
+        id: cyc
+        working-directory: pipeline
+        run: |
+          CYCLE="${{ github.event.inputs.cycle }}"
+          if [ -z "$CYCLE" ]; then
+            # Auto path (or dispatch with no cycle): the in-force cycle on any
+            # day (avoids a midnight-rollover race with an exact-AIRAC check).
+            CYCLE=$(python -c "from avgasmap import airac; print(airac.current_cycle())")
+          fi
+          echo "cycle=$CYCLE" >> "$GITHUB_OUTPUT"
+          echo "Reviewing cycle $CYCLE"
+
+      - name: Install Ollama
+        run: curl -fsSL https://ollama.com/install.sh | bash
+
+      - name: Start Ollama and pull the model
+        env:
+          MODEL: ${{ github.event.inputs.model || 'qwen3:8b' }}
+        run: |
+          ollama serve &
+          # Wait for the server to accept connections.
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:11434/api/version && break
+            sleep 1
+          done
+          ollama pull "$MODEL"
+
+      - name: Run extraction-QA pass (report-only, no publish)
+        env:
+          AUTOROUTER_USER: ${{ secrets.AUTOROUTER_USER }}
+          AUTOROUTER_PASS: ${{ secrets.AUTOROUTER_PASS }}
+          MODEL: ${{ github.event.inputs.model || 'qwen3:8b' }}
+        working-directory: pipeline
+        run: |
+          python run_pipeline.py \
+            --local \
+            --cycle "${{ steps.cyc.outputs.cycle }}" \
+            --workspace "${{ github.workspace }}/pipeline/_run" \
+            --llm-review \
+            --llm-model "$MODEL"
+
+      - name: Upload suggestions + report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: llm-suggestions
+          path: |
+            pipeline/_run/suggestions.json
+            pipeline/_run/report.md
+          if-no-files-found: ignore

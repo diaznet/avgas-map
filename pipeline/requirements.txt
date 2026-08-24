@@ -1,0 +1,17 @@
+# AVGAS-Map pipeline dependencies (pinned)
+
+# PDF -> Markdown conversion for chart parsing (France VAC)
+pymupdf4llm==0.0.17
+pymupdf==1.24.10
+
+# autorouter WebDAV client
+webdavclient3==3.14.6
+
+# HTTP fetching (OpenAIP exports, retries)
+requests==2.32.3
+
+# Optional local .env loading (never used in CI)
+python-dotenv==1.0.1
+
+# Test runner
+pytest==8.3.3

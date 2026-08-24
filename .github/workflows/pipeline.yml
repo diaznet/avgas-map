@@ -1,0 +1,106 @@
+name: AVGAS-Map pipeline
+
+# Runs daily but only proceeds on an AIRAC effective date (computed in code).
+# Also runnable on demand. Publishes the cycle dataset as a GitHub Release asset
+# and deploys the static site + manifest to GitHub Pages. Commits nothing.
+
+on:
+  schedule:
+    - cron: "0 5 * * *"   # daily 05:00 UTC; the AIRAC gate no-ops on non-AIRAC days
+  workflow_dispatch:
+    inputs:
+      cycle:
+        description: "Force an AIRAC cycle id (YYNN), bypassing the date gate"
+        required: false
+        type: string
+      override_guard:
+        description: "Bypass the relative-drop guard (floor still enforced)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write   # create Releases + upload assets
+  pages: write      # deploy Pages
+  id-token: write   # Pages deployment auth
+
+concurrency:
+  group: avgas-map-pipeline
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      proceed: ${{ steps.gate.outputs.proceed }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - id: gate
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.inputs.cycle }}" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            echo "Manual dispatch -> proceeding."
+            exit 0
+          fi
+          CID=$(python pipeline/avgasmap/airac_cli.py --today)
+          if [ -n "$CID" ]; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            echo "Today is AIRAC effective date (cycle $CID) -> proceeding."
+          else
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+            echo "Not an AIRAC effective date -> no-op."
+          fi
+
+  build-publish-deploy:
+    needs: gate
+    if: needs.gate.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pipeline dependencies
+        run: pip install -r pipeline/requirements.txt
+
+      - name: Run pipeline (fetch, parse, join, guard, publish Release)
+        env:
+          AUTOROUTER_USER: ${{ secrets.AUTOROUTER_USER }}
+          AUTOROUTER_PASS: ${{ secrets.AUTOROUTER_PASS }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        working-directory: pipeline
+        run: |
+          python run_pipeline.py \
+            --workspace "${{ github.workspace }}/pipeline/_run" \
+            ${{ github.event.inputs.cycle && format('--cycle {0}', github.event.inputs.cycle) || '' }} \
+            ${{ github.event.inputs.override_guard == 'true' && '--override-guard' || '' }}
+
+      - name: Upload processing report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: processing-report
+          path: pipeline/**/report.md
+          if-no-files-found: ignore
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

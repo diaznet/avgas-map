@@ -1,0 +1,22 @@
+# Local credentials — never commit
+pipeline/.env
+.env
+
+# Local pipeline output (generated datasets/manifest for local preview)
+web/data/
+
+# Pipeline run workspace (PDFs, converted markdown, report, suggestions.json)
+pipeline/_run/
+# Generated artifacts that may land outside the workspace
+suggestions.json
+report.md
+
+# Spike/legacy output
+out/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AVGAS-Map — aerodromes offering AVGAS</title>
+  <link rel="stylesheet" href="vendor/leaflet.css" />
+  <link rel="stylesheet" href="vendor/markercluster.css" />
+  <link rel="stylesheet" href="vendor/markercluster.default.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header id="topbar">
+    <div class="brand">AVGAS-Map</div>
+    <div class="controls">
+      <label class="control">
+        Cycle
+        <select id="cycle-select" aria-label="AIRAC cycle"></select>
+      </label>
+      <span class="control filter-group" role="group" aria-label="Filter by AVGAS grade">
+        <label><input type="checkbox" class="grade-filter" value="100LL" checked /> 100LL</label>
+        <label><input type="checkbox" class="grade-filter" value="UL91" checked /> UL91</label>
+        <label><input type="checkbox" class="grade-filter" value="100/130" checked /> 100/130</label>
+        <label><input type="checkbox" class="grade-filter" value="AVGAS" checked /> AVGAS</label>
+      </span>
+      <label class="control">
+        Provider
+        <select id="provider-select" aria-label="Filter by fuel provider">
+          <option value="">All</option>
+        </select>
+      </label>
+      <label class="control search">
+        <input id="search" type="search" placeholder="Search ICAO or name…" aria-label="Search aerodrome" />
+      </label>
+    </div>
+  </header>
+
+  <div id="map" role="application" aria-label="Map of aerodromes offering AVGAS"></div>
+
+  <div id="status" class="status" hidden></div>
+
+  <footer id="footer">
+    <span id="freshness" class="freshness"></span>
+    <span class="disclaimer">
+      Not an official source. Do not use as the sole reference for flight planning.
+    </span>
+    <span class="attribution">
+      Fuel data: <span id="attr-fuel">SIA</span> ·
+      Coordinates: <a href="https://www.openaip.net/" target="_blank" rel="noopener">OpenAIP</a> ·
+      Map: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> ·
+      <a href="https://github.com/diaznet/avgas-map" target="_blank" rel="noopener">Source on GitHub</a>
+    </span>
+  </footer>
+
+  <script src="vendor/leaflet.js"></script>
+  <script src="vendor/markercluster.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

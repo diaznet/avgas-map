@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Block .env reads",
+      "trigger": "PreToolUse",
+      "description": "Hard-blocks any attempt by the agent to read, open, or search .env files (secrets). Fires before read/search tools and denies (exit 2) if a .env path is referenced. Allows .env.example.",
+      "matcher": "read_file|read_files|read_code|grep_search|file_search",
+      "action": {
+        "type": "command",
+        "command": "python .kiro/hooks/block_env_reads.py"
+      }
+    }
+  ]
+}
