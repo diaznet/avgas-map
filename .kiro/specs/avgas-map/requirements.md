@@ -156,6 +156,17 @@ Data is fetched and processed by a GitHub Actions pipeline that runs on AIRAC ef
 4. WHERE data is derived from an official source THEN the system SHALL attribute that source per country (e.g., SIA for France) AND SHALL display OpenAIP attribution for coordinate data as required.
 5. WHEN the site loads THEN the system SHALL display a link to the project's source repository (GitHub) in the site chrome, so the project stays open and inspectable.
 
+### Requirement 10: Search-engine discoverability
+
+**User Story:** As a pilot searching the web for where to find AVGAS, I want the map to be discoverable by search engines, so that I can reach it without already knowing its URL.
+
+#### Acceptance Criteria
+
+1. WHEN a search-engine crawler requests `/robots.txt` from the site THEN the system SHALL serve a `robots.txt` that allows crawling of the site and points to the sitemap URL.
+2. WHEN a search-engine crawler requests `/sitemap.xml` from the site THEN the system SHALL serve a valid XML sitemap listing the site's canonical URL(s).
+3. WHERE search-console ownership verification is required THEN the system SHALL serve the verification token at the site root (either a Google-provided verification HTML file under the site root or a `google-site-verification` meta tag in `index.html`), and SHALL retain it so verification is not lost.
+4. WHERE these discoverability assets are concerned THEN the system SHALL ship them as static files in the deployed site (part of the `web/` Pages artifact), introducing no backend and no paid service, consistent with the static-hosting invariant.
+
 ## Scope and Sequencing
 
 - The product scope is the EASA area, using charts available through the autorouter WebDAV.
