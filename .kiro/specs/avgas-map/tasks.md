@@ -420,3 +420,17 @@ The contract is the normalized dataset: build it and its validation first
   - Tests: manifest urls are relative; publish path writes all retained datasets
     into web/data/; mock client download_asset.
   - _Requirements: 8.2_
+
+- [ ] 31. Add search-engine discoverability assets (`web/`)
+  - Add `web/robots.txt` (allow all crawlers; declare the absolute sitemap URL)
+    and `web/sitemap.xml` (one `<loc>`: the canonical site root
+    `https://diaznet.github.io/avgas-map/`). Static files shipped in the Pages
+    artifact; no backend, no build step.
+  - Keep the Google Search Console verification token at the site root (the
+    `web/google<token>.html` file already added, or a `google-site-verification`
+    meta tag in `index.html`); it must be retained so verification is not lost.
+  - If a custom domain is ever added, update the absolute URLs in `robots.txt`
+    and `sitemap.xml` in the same change.
+  - Verify: the files are well-formed and resolve at `/robots.txt` and
+    `/sitemap.xml` once deployed.
+  - _Requirements: 10.1, 10.2, 10.3, 10.4_

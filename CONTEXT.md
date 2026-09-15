@@ -143,6 +143,22 @@ The map defaults to the latest cycle.
 The date an AIRAC cycle's data becomes legally in force. Distinct from the
 publication date (~28 days earlier) and from a run date.
 
+### Canonical site URL
+The single absolute URL the deployed site is addressed by, used in the
+discoverability assets (`robots.txt` sitemap declaration, `sitemap.xml`
+`<loc>`). Today it is the GitHub Pages project URL
+`https://diaznet.github.io/avgas-map/` (no custom domain / `CNAME`). It is the
+only place the absolute site URL is hard-coded; a custom domain would update it
+in `robots.txt` and `sitemap.xml` together.
+
+### Discoverability assets
+The static, root-served files that let search engines find and verify the site:
+`robots.txt` (crawl policy + sitemap pointer), `sitemap.xml` (the canonical
+URL(s) to index), and the search-console verification token (a Google-provided
+HTML file at the site root, or a `google-site-verification` meta tag in
+`index.html`). They ship in the `web/` Pages artifact, add no backend, and are
+independent of the AIRAC data path.
+
 ### VAC / AVT (France-specific)
 VAC: a French Visual Approach Chart PDF. AVT: its fuel field, item `10 - AVT`
 bounded by `11 - RFFS`. These terms are specific to the France parser and must

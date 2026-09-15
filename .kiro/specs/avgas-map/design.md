@@ -386,6 +386,30 @@ UI chrome:
 Switching cycles re-fetches that cycle's dataset and updates the freshness
 display. Dataset load failure shows a clear error, not a blank map (R1.5).
 
+### Search-engine discoverability (R10)
+
+The site ships three static files at its root so crawlers and search consoles
+can find and verify it. They are plain files in `web/`, shipped in the Pages
+artifact — no backend, no build step, consistent with the static-hosting
+invariant:
+
+- **`web/robots.txt`** — allows all crawlers and declares the sitemap location
+  (absolute URL, since `robots.txt` requires it). Served at `/robots.txt`.
+- **`web/sitemap.xml`** — a minimal urlset with the site's canonical URL. The
+  app is a single-page map (one indexable URL: the site root), so the sitemap
+  lists that one `<loc>`. Served at `/sitemap.xml`.
+- **Search-console verification token** — a Google-provided verification HTML
+  file kept at the site root (`web/google<token>.html`), or equivalently a
+  `google-site-verification` meta tag in `index.html`. Kept permanently; Google
+  re-checks it and removing it un-verifies the property.
+
+Canonical URL is the GitHub Pages project URL `https://diaznet.github.io/avgas-map/`
+(no custom domain / `CNAME` today). If a custom domain is added later, these
+files' absolute URLs must be updated in the same change (they are the only place
+the absolute site URL is hard-coded). These assets are static and unaffected by
+the AIRAC data path: they redeploy with every Pages publish but do not depend on
+a dataset being produced.
+
 ### Local development / preview
 
 The whole pipeline and front-end run locally end-to-end with no publishing:
